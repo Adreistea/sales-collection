@@ -15,7 +15,7 @@
     <div class="container mt-4">
         <!-- Back Button -->
         <div class="back-button">
-            <a href="#" class="btn btn-primary">← Back to Main</a>
+            <a href="main.php" class="btn btn-primary">← Back to Main</a>
         </div>
 
         <!-- Navigation Tabs -->

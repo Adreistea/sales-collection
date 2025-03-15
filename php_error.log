@@ -1,0 +1,88 @@
+[15-Mar-2025 14:22:57 UTC] Starting generate_report.php
+[15-Mar-2025 14:22:57 UTC] About to include db_connect.php
+[15-Mar-2025 14:22:57 UTC] Database connection successful
+[15-Mar-2025 14:23:02 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:02 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:02 UTC] Database connection successful
+[15-Mar-2025 14:23:04 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:04 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:04 UTC] Database connection successful
+[15-Mar-2025 14:23:05 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:05 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:05 UTC] Database connection successful
+[15-Mar-2025 14:23:07 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:07 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:07 UTC] Database connection successful
+[15-Mar-2025 14:23:09 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:09 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:09 UTC] Database connection successful
+[15-Mar-2025 14:23:11 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:11 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:11 UTC] Database connection successful
+[15-Mar-2025 14:23:13 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:13 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:13 UTC] Database connection successful
+[15-Mar-2025 14:23:15 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:15 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:15 UTC] Database connection successful
+[15-Mar-2025 14:23:18 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:18 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:18 UTC] Database connection successful
+[15-Mar-2025 14:23:23 UTC] Starting generate_report.php
+[15-Mar-2025 14:23:23 UTC] About to include db_connect.php
+[15-Mar-2025 14:23:23 UTC] Database connection successful
+[15-Mar-2025 14:26:07 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:07 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:07 UTC] Database connection successful
+[15-Mar-2025 14:26:09 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:09 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:09 UTC] Database connection successful
+[15-Mar-2025 14:26:09 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:09 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:09 UTC] Database connection successful
+[15-Mar-2025 14:26:11 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:11 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:11 UTC] Database connection successful
+[15-Mar-2025 14:26:12 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:12 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:12 UTC] Database connection successful
+[15-Mar-2025 14:26:44 UTC] Starting generate_report.php
+[15-Mar-2025 14:26:44 UTC] About to include db_connect.php
+[15-Mar-2025 14:26:44 UTC] Database connection successful
+[15-Mar-2025 14:26:44 UTC] PHP Warning:  Undefined variable $conn in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:26:44 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in C:\laragon\www\new-SCS\generate_report.php:27
+Stack trace:
+#0 {main}
+  thrown in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:27:09 UTC] Starting generate_report.php
+[15-Mar-2025 14:27:09 UTC] About to include db_connect.php
+[15-Mar-2025 14:27:09 UTC] Database connection successful
+[15-Mar-2025 14:27:09 UTC] PHP Warning:  Undefined variable $conn in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:27:09 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in C:\laragon\www\new-SCS\generate_report.php:27
+Stack trace:
+#0 {main}
+  thrown in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:27:09 UTC] Starting generate_report.php
+[15-Mar-2025 14:27:09 UTC] About to include db_connect.php
+[15-Mar-2025 14:27:09 UTC] Database connection successful
+[15-Mar-2025 14:27:09 UTC] PHP Warning:  Undefined variable $conn in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:27:09 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in C:\laragon\www\new-SCS\generate_report.php:27
+Stack trace:
+#0 {main}
+  thrown in C:\laragon\www\new-SCS\generate_report.php on line 27
+[15-Mar-2025 14:28:44 UTC] Starting generate_report.php
+[15-Mar-2025 14:28:44 UTC] About to include db_connect.php
+[15-Mar-2025 14:28:44 UTC] Database connection successful
+[15-Mar-2025 14:28:44 UTC] PHP Warning:  Undefined variable $conn in C:\laragon\www\new-SCS\generate_report.php on line 24
+[15-Mar-2025 14:28:44 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in C:\laragon\www\new-SCS\generate_report.php:24
+Stack trace:
+#0 {main}
+  thrown in C:\laragon\www\new-SCS\generate_report.php on line 24
+[15-Mar-2025 14:28:45 UTC] Starting generate_report.php
+[15-Mar-2025 14:28:45 UTC] About to include db_connect.php
+[15-Mar-2025 14:28:45 UTC] Database connection successful
+[15-Mar-2025 14:28:45 UTC] PHP Warning:  Undefined variable $conn in C:\laragon\www\new-SCS\generate_report.php on line 24
+[15-Mar-2025 14:28:45 UTC] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in C:\laragon\www\new-SCS\generate_report.php:24
+Stack trace:
+#0 {main}
+  thrown in C:\laragon\www\new-SCS\generate_report.php on line 24
