@@ -1,4 +1,16 @@
-<?php require_once 'config/db_connect.php'; ?>
+<?php
+require_once 'includes/session.php';
+require_once 'config/db_connect.php';
+require_once 'includes/audit_log.php';
+
+// Require login
+requireLogin();
+
+// Log page access
+logActivity($pdo, "Accessed dashboard", "Dashboard");
+
+// Rest of your index.php code
+?>
 
 <!DOCTYPE html>
 <html lang="en">
