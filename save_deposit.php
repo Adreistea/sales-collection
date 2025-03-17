@@ -24,21 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $bank_acc_no = $_POST['bank_acc_no'] ?? null;
         $check_no = $_POST['check_no'] ?? null;
         $remarks = $_POST['remarks'] ?? null;
-        $total_checks = str_replace(',', '', $_POST['total_checks'] ?? 0);
-        $total_cash = str_replace(',', '', $_POST['total_cash'] ?? 0);
-        
-        // Prepare additional data for logging
-        $log_data = [
-            'invoice_no' => $invoice_no,
-            'date' => $date,
-            'total_cash' => $total_cash,
-            'total_checks' => $total_checks
-        ];
-        
-        if (!empty($bank)) $log_data['bank'] = $bank;
-        if (!empty($bank_acc_no)) $log_data['bank_acc_no'] = $bank_acc_no;
-        if (!empty($check_no)) $log_data['check_no'] = $check_no;
-        if (!empty($remarks)) $log_data['remarks'] = $remarks;
+        $total_checks = str_replace(',', '', $_POST['total_checks']);
+        $total_cash = str_replace(',', '', $_POST['total_cash']);
         
         // Debug output
         error_log("Deposit data: " . json_encode([
@@ -69,57 +56,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $remarks, $total_checks, $total_cash, $deposit_no
             ]);
             
-            // Log the update activity
-            logDepositActivity($pdo, "updated", $deposit_no, $log_data);
-            
             error_log("Updated existing deposit: " . $deposit_no);
         } else {
             // Insert new deposit
-            $stmt = $pdo->prepare("INSERT INTO deposits (deposit_no, invoice_no, date, bank, bank_acc_no, check_no, remarks, total_checks, total_cash, status) 
-                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Completed')");
+            $stmt = $pdo->prepare("INSERT INTO deposits (deposit_no, invoice_no, date, bank, bank_acc_no, 
+                                  check_no, remarks, total_checks, total_cash) 
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
-                $deposit_no, $invoice_no, $date, $bank, $bank_acc_no, $check_no, $remarks, $total_checks, $total_cash
+                $deposit_no, $invoice_no, $date, $bank, $bank_acc_no, 
+                $check_no, $remarks, $total_checks, $total_cash
             ]);
             
-            // Log the create activity
-            logDepositActivity($pdo, "created", $deposit_no, $log_data);
-            
-            error_log("Created new deposit: " . $deposit_no);
+            error_log("Inserted new deposit: " . $deposit_no);
         }
         
-        // Update invoice status to Deposited
+        // Update invoice status to "Deposited"
         $stmt = $pdo->prepare("UPDATE invoice SET status = 'Deposited' WHERE invoice_no = ?");
         $stmt->execute([$invoice_no]);
         
-        // Get payment type and amount from invoice
-        $stmt = $pdo->prepare("SELECT payment_type, payments FROM invoice WHERE invoice_no = ?");
+        // Also update request_for_billing if it exists
+        $stmt = $pdo->prepare("UPDATE request_for_billing SET status = 'Deposited' WHERE invoice_no = ?");
         $stmt->execute([$invoice_no]);
-        $invoice = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($invoice) {
-            // Log the payment activity
-            $payment_type = $invoice['payment_type'] ?? ($total_checks > 0 ? 'Check' : 'Cash');
-            $payment_amount = $invoice['payments'] ?? ($total_checks + $total_cash);
-            
-            logPaymentActivity($pdo, "deposited", $invoice_no, $payment_amount, $payment_type);
-        }
         
         // Commit transaction
         $pdo->commit();
         
-        // Redirect back to deposit page with success message
-        header("Location: deposit.php?success=1&id=" . urlencode($deposit_no));
+        // Redirect back to list page with success message
+        header("Location: list.php?success=deposit_saved");
         exit;
         
     } catch (PDOException $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        
-        // Log the error
-        error_log("Error saving deposit: " . $e->getMessage());
-        
-        // Redirect with error message
-        header("Location: deposit.php?error=" . urlencode($e->getMessage()));
+        error_log("Database Error: " . $e->getMessage());
+        header("Location: deposit.php?error=" . urlencode("Database Error: " . $e->getMessage()));
+        exit;
+    } catch (Exception $e) {
+        // Handle other exceptions
+        error_log("General Error: " . $e->getMessage());
+        header("Location: deposit.php?error=" . urlencode("Error: " . $e->getMessage()));
         exit;
     }
 } else {

@@ -7,17 +7,16 @@ require_once 'includes/audit_log.php';
 requireLogin();
 
 // Log page access
-logActivity($pdo, "Accessed dashboard", "Dashboard");
-
-// Log transaction access
 logActivity($pdo, "Accessed deposit page", "Deposits");
-
-$error_message = '';
 
 // Generate a unique deposit number if not editing an existing one
 $deposit_no = 'DEP-' . date('YmdHis');
-$current_date = date('Y-m-d'); // Use ISO format for better compatibility
+$current_date = date('Y-m-d');
 $status = 'Pending';
+$payment_type = '';
+$total_checks = 0;
+$total_cash = 0;
+$error_message = '';
 
 // If editing an existing deposit slip
 if (isset($_GET['id'])) {
@@ -31,11 +30,6 @@ if (isset($_GET['id'])) {
             $current_date = date('Y-m-d', strtotime($deposit['date']));
             $status = $deposit['status'] ?? 'Pending';
             // Other fields will be populated in the form
-            
-            // Log viewing existing deposit
-            logDepositActivity($pdo, "viewed", $deposit_no, [
-                'invoice_no' => $deposit['invoice_no'] ?? 'N/A'
-            ]);
         }
     } catch (PDOException $e) {
         $error_message = "Error fetching deposit: " . $e->getMessage();
@@ -60,12 +54,6 @@ if (isset($_GET['invoice_no'])) {
             $payment_type = $selected_invoice['payment_type'] ?? '';
             $total_checks = ($payment_type == 'Check') ? $selected_invoice['payments'] : 0;
             $total_cash = ($payment_type == 'Cash') ? $selected_invoice['payments'] : 0;
-            
-            // Log selecting invoice for deposit
-            logInvoiceActivity($pdo, "selected for deposit", $selected_invoice['invoice_no'], [
-                'payment_type' => $payment_type,
-                'amount' => $selected_invoice['payments'] ?? 0
-            ]);
         }
     } catch (PDOException $e) {
         $error_message = "Error fetching invoice: " . $e->getMessage();
@@ -150,7 +138,7 @@ try {
 <body>
     <!-- Include the navbar -->
     <?php include 'includes/navbar.php'; ?>
-    
+
     <div class="container mt-4">
         <!-- Back Button -->
         <div class="mb-3">
@@ -221,7 +209,7 @@ try {
                     <div class="card-body">
                         <h2 class="text-center mb-4">Deposit Slip</h2>
                         
-                        <?php if (isset($error_message)): ?>
+                        <?php if (isset($error_message) && !empty($error_message)): ?>
                             <div class="alert alert-danger"><?php echo $error_message; ?></div>
                         <?php endif; ?>
                         
@@ -243,7 +231,7 @@ try {
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label for="date" class="form-label">Date:</label>
-                                            <input type="date" class="form-control" id="date" name="date" value="<?php echo htmlspecialchars($current_date); ?>">
+                                            <input type="text" class="form-control" id="date" name="date" value="<?php echo htmlspecialchars($current_date); ?>">
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -361,7 +349,7 @@ try {
                                                                             $amount = $detail['total_cash'];
                                                                         }
                                                                     }
-                                                                    echo 'PHP ' . number_format($amount, 2);
+                                                                    echo number_format($amount, 2);
                                                                 ?>
                                                             </td>
                                                         </tr>

@@ -3,6 +3,12 @@ require_once 'includes/session.php';
 require_once 'config/db_connect.php';
 require_once 'includes/audit_log.php';
 
+// Require admin role
+requireRole('admin');
+
+// Log the page access
+logActivity($pdo, "Accessed audit logs", "Administration");
+
 // Pagination variables
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $records_per_page = 20;
@@ -11,7 +17,7 @@ $offset = ($page - 1) * $records_per_page;
 // Filtering variables
 $username = isset($_GET['username']) ? $_GET['username'] : '';
 $module = isset($_GET['module']) ? $_GET['module'] : '';
-$transaction_id = isset($_GET['transaction_id']) ? $_GET['transaction_id'] : '';
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 
@@ -33,11 +39,10 @@ if (!empty($module)) {
     $params[] = $module;
 }
 
-if (!empty($transaction_id)) {
-    $query .= " AND (action LIKE ? OR details LIKE ?)";
-    $count_query .= " AND (action LIKE ? OR details LIKE ?)";
-    $params[] = "%$transaction_id%";
-    $params[] = "%$transaction_id%";
+if (!empty($action)) {
+    $query .= " AND action LIKE ?";
+    $count_query .= " AND action LIKE ?";
+    $params[] = "%$action%";
 }
 
 if (!empty($date_from)) {
@@ -69,34 +74,6 @@ $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Get unique modules for filter dropdown
 $module_stmt = $pdo->query("SELECT DISTINCT module FROM audit_logs ORDER BY module");
 $modules = $module_stmt->fetchAll(PDO::FETCH_COLUMN);
-
-// Get statistics
-try {
-    // Total invoices created
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'Invoice created%'");
-    $stmt->execute();
-    $invoices_created = $stmt->fetchColumn();
-    
-    // Total deposits created
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'Deposit created%'");
-    $stmt->execute();
-    $deposits_created = $stmt->fetchColumn();
-    
-    // Total payments processed
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM audit_logs WHERE action LIKE 'Payment%'");
-    $stmt->execute();
-    $payments_processed = $stmt->fetchColumn();
-    
-    // Most active user
-    $stmt = $pdo->query("SELECT username, COUNT(*) as count FROM audit_logs GROUP BY username ORDER BY count DESC LIMIT 1");
-    $most_active = $stmt->fetch(PDO::FETCH_ASSOC);
-    $most_active_user = $most_active ? $most_active['username'] : 'None';
-    
-} catch (PDOException $e) {
-    $error_message = "Error fetching statistics: " . $e->getMessage();
-    $invoices_created = $deposits_created = $payments_processed = 0;
-    $most_active_user = 'Error';
-}
 ?>
 
 <!DOCTYPE html>
@@ -104,52 +81,84 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction Audit Logs - Sales Collection System</title>
+    <title>Audit Logs - Sales Collection System</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .stats-card {
-            border-left: 4px solid;
-            border-radius: 4px;
-            transition: transform 0.2s;
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
         }
         
-        .stats-card:hover {
-            transform: translateY(-3px);
+        .container {
+            max-width: 1200px;
         }
         
-        .stats-card.primary {
-            border-left-color: #007bff;
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            margin-bottom: 24px;
         }
         
-        .stats-card.success {
-            border-left-color: #28a745;
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px 20px;
         }
         
-        .stats-card.warning {
-            border-left-color: #ffc107;
+        .card-body {
+            padding: 20px;
         }
         
-        .stats-card.info {
-            border-left-color: #17a2b8;
+        .btn {
+            border-radius: 6px;
+            font-weight: 500;
         }
         
-        .stats-icon {
-            font-size: 2rem;
-            opacity: 0.7;
+        .table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .badge {
+            font-weight: 500;
+            padding: 5px 10px;
+            border-radius: 6px;
         }
         
         .pagination-info {
             font-size: 0.9rem;
             color: #6c757d;
+            font-weight: 300;
         }
         
         .highlight {
             background-color: #fff3cd;
+            border-radius: 3px;
+            padding: 0 3px;
         }
         
-        .transaction-badge {
-            font-size: 0.8rem;
+        .page-link {
+            border-radius: 4px;
+            margin: 0 2px;
+        }
+        
+        .modal-content {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .modal-header {
+            border-radius: 10px 10px 0 0;
         }
     </style>
 </head>
@@ -158,90 +167,23 @@ try {
     
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-journal-text me-2"></i>Transaction Audit Logs</h2>
-            <a href="export_logs.php<?php echo !empty($_GET) ? '?' . http_build_query($_GET) : ''; ?>" class="btn btn-success">
-                <i class="bi bi-file-earmark-excel me-2"></i>Export to Excel
-            </a>
-        </div>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card primary">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted">Invoices Created</h6>
-                                <h3><?php echo number_format($invoices_created); ?></h3>
-                            </div>
-                            <div class="stats-icon text-primary">
-                                <i class="bi bi-file-earmark-text"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card success">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted">Deposits Created</h6>
-                                <h3><?php echo number_format($deposits_created); ?></h3>
-                            </div>
-                            <div class="stats-icon text-success">
-                                <i class="bi bi-cash-stack"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card warning">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted">Payments Processed</h6>
-                                <h3><?php echo number_format($payments_processed); ?></h3>
-                            </div>
-                            <div class="stats-icon text-warning">
-                                <i class="bi bi-credit-card"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card info">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted">Most Active User</h6>
-                                <h3><?php echo htmlspecialchars($most_active_user); ?></h3>
-                            </div>
-                            <div class="stats-icon text-info">
-                                <i class="bi bi-person"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <h2 class="fw-bold"><i class="bi bi-journal-text me-2"></i>Audit Logs</h2>
         </div>
         
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Transactions</h5>
+                <h5 class="mb-0 fw-semibold"><i class="bi bi-funnel me-2"></i>Filter Logs</h5>
             </div>
             <div class="card-body">
                 <form method="get" action="audit_logs.php" class="row g-3">
                     <div class="col-md-4">
-                        <label for="username" class="form-label">User</label>
+                        <label for="username" class="form-label">Username</label>
                         <input type="text" class="form-control" id="username" name="username" value="<?php echo htmlspecialchars($username); ?>" placeholder="Search by username">
                     </div>
                     <div class="col-md-4">
-                        <label for="module" class="form-label">Transaction Type</label>
+                        <label for="module" class="form-label">Module</label>
                         <select class="form-select" id="module" name="module">
-                            <option value="">All Types</option>
+                            <option value="">All Modules</option>
                             <?php foreach ($modules as $mod): ?>
                                 <option value="<?php echo htmlspecialchars($mod); ?>" <?php echo $module === $mod ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($mod); ?>
@@ -250,8 +192,8 @@ try {
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label for="transaction_id" class="form-label">Invoice/Deposit #</label>
-                        <input type="text" class="form-control" id="transaction_id" name="transaction_id" value="<?php echo htmlspecialchars($transaction_id); ?>" placeholder="Search by ID">
+                        <label for="action" class="form-label">Action</label>
+                        <input type="text" class="form-control" id="action" name="action" value="<?php echo htmlspecialchars($action); ?>" placeholder="Search by action">
                     </div>
                     <div class="col-md-4">
                         <label for="date_from" class="form-label">Date From</label>
@@ -278,7 +220,7 @@ try {
         <div class="card">
             <div class="card-header bg-light">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Transaction History</h5>
+                    <h5 class="mb-0 fw-semibold"><i class="bi bi-list-ul me-2"></i>Log Entries</h5>
                     <span class="pagination-info">
                         Showing <?php echo min($total_records, $offset + 1); ?> to 
                         <?php echo min($total_records, $offset + $records_per_page); ?> of 
@@ -292,37 +234,25 @@ try {
                         <thead class="table-light">
                             <tr>
                                 <th>Date & Time</th>
-                                <th>User</th>
-                                <th>Transaction Type</th>
+                                <th>Username</th>
+                                <th>Module</th>
                                 <th>Action</th>
+                                <th>IP Address</th>
                                 <th>Details</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($logs as $log): ?>
-                                <?php 
-                                // Parse details JSON if available
-                                $details = [];
-                                if (!empty($log['details'])) {
-                                    $details = json_decode($log['details'], true);
-                                }
-                                
-                                // Determine badge color based on module
-                                $badgeClass = 'bg-secondary';
-                                if ($log['module'] == 'Invoices') $badgeClass = 'bg-primary';
-                                if ($log['module'] == 'Deposits') $badgeClass = 'bg-success';
-                                if ($log['module'] == 'Payments') $badgeClass = 'bg-warning text-dark';
-                                if ($log['module'] == 'User Management') $badgeClass = 'bg-info';
-                                ?>
                                 <tr>
                                     <td><?php echo date('M d, Y H:i:s', strtotime($log['created_at'])); ?></td>
                                     <td><?php echo htmlspecialchars($log['username']); ?></td>
                                     <td>
-                                        <span class="badge <?php echo $badgeClass; ?>">
+                                        <span class="badge bg-info">
                                             <?php echo htmlspecialchars($log['module']); ?>
                                         </span>
                                     </td>
                                     <td><?php echo htmlspecialchars($log['action']); ?></td>
+                                    <td><?php echo htmlspecialchars($log['ip_address']); ?></td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" 
                                                 data-bs-toggle="modal" 
@@ -333,33 +263,19 @@ try {
                                                 data-log-module="<?php echo htmlspecialchars($log['module']); ?>"
                                                 data-log-action="<?php echo htmlspecialchars($log['action']); ?>"
                                                 data-log-ip="<?php echo htmlspecialchars($log['ip_address']); ?>"
-                                                data-log-details='<?php echo htmlspecialchars(json_encode($details)); ?>'>
-                                            <i class="bi bi-info-circle"></i> View
+                                                data-log-agent="<?php echo htmlspecialchars($log['user_agent']); ?>">
+                                            <i class="bi bi-info-circle"></i>
                                         </button>
-                                        
-                                        <?php if (!empty($details)): ?>
-                                            <?php if (isset($details['invoice_no'])): ?>
-                                                <span class="badge bg-light text-dark transaction-badge ms-1">
-                                                    Invoice: <?php echo htmlspecialchars($details['invoice_no']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                            
-                                            <?php if (isset($details['deposit_no'])): ?>
-                                                <span class="badge bg-light text-dark transaction-badge ms-1">
-                                                    Deposit: <?php echo htmlspecialchars($details['deposit_no']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                             
                             <?php if (empty($logs)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
+                                    <td colspan="6" class="text-center py-4">
                                         <i class="bi bi-exclamation-circle text-muted fs-1 d-block mb-2"></i>
-                                        <p class="text-muted">No transaction logs found matching your criteria</p>
-                                        <?php if (!empty($username) || !empty($module) || !empty($transaction_id) || !empty($date_from) || !empty($date_to)): ?>
+                                        <p class="text-muted">No logs found matching your criteria</p>
+                                        <?php if (!empty($username) || !empty($module) || !empty($action) || !empty($date_from) || !empty($date_to)): ?>
                                             <a href="audit_logs.php" class="btn btn-sm btn-outline-secondary">Clear filters</a>
                                         <?php endif; ?>
                                     </td>
@@ -439,7 +355,7 @@ try {
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="logDetailModalLabel">Transaction Details</h5>
+                    <h5 class="modal-title fw-semibold" id="logDetailModalLabel">Log Entry Details</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -447,10 +363,10 @@ try {
                         <div class="col-md-6">
                             <p><strong>Log ID:</strong> <span id="modal-log-id"></span></p>
                             <p><strong>Date & Time:</strong> <span id="modal-log-time"></span></p>
-                            <p><strong>User:</strong> <span id="modal-log-user"></span></p>
+                            <p><strong>Username:</strong> <span id="modal-log-user"></span></p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Transaction Type:</strong> <span id="modal-log-module"></span></p>
+                            <p><strong>Module:</strong> <span id="modal-log-module"></span></p>
                             <p><strong>IP Address:</strong> <span id="modal-log-ip"></span></p>
                         </div>
                     </div>
@@ -458,15 +374,9 @@ try {
                         <p><strong>Action:</strong></p>
                         <div class="p-3 bg-light rounded" id="modal-log-action"></div>
                     </div>
-                    <div id="transaction-details-container">
-                        <p><strong>Transaction Details:</strong></p>
-                        <div class="p-3 bg-light rounded" id="modal-transaction-details">
-                            <table class="table table-sm table-borderless mb-0">
-                                <tbody id="transaction-details-table">
-                                    <!-- Details will be populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div>
+                        <p><strong>User Agent:</strong></p>
+                        <div class="p-3 bg-light rounded" style="word-break: break-all;" id="modal-log-agent"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -492,7 +402,7 @@ try {
                     const logModule = button.getAttribute('data-log-module');
                     const logAction = button.getAttribute('data-log-action');
                     const logIp = button.getAttribute('data-log-ip');
-                    const logDetails = button.getAttribute('data-log-details');
+                    const logAgent = button.getAttribute('data-log-agent');
                     
                     // Update modal content
                     document.getElementById('modal-log-id').textContent = logId;
@@ -501,67 +411,7 @@ try {
                     document.getElementById('modal-log-module').textContent = logModule;
                     document.getElementById('modal-log-action').textContent = logAction;
                     document.getElementById('modal-log-ip').textContent = logIp;
-                    
-                    // Handle transaction details
-                    const detailsContainer = document.getElementById('transaction-details-container');
-                    const detailsTable = document.getElementById('transaction-details-table');
-                    
-                    if (logDetails && logDetails !== 'null') {
-                        detailsContainer.style.display = 'block';
-                        
-                        try {
-                            const details = JSON.parse(logDetails);
-                            let tableHtml = '';
-                            
-                            // Handle invoice details
-                            if (details.invoice_no) {
-                                tableHtml += `<tr><td><strong>Invoice Number:</strong></td><td>${details.invoice_no}</td></tr>`;
-                            }
-                            
-                            // Handle deposit details
-                            if (details.deposit_no) {
-                                tableHtml += `<tr><td><strong>Deposit Number:</strong></td><td>${details.deposit_no}</td></tr>`;
-                            }
-                            
-                            // Handle payment details
-                            if (details.amount) {
-                                tableHtml += `<tr><td><strong>Amount:</strong></td><td>PHP ${parseFloat(details.amount).toFixed(2)}</td></tr>`;
-                            }
-                            
-                            if (details.payment_type) {
-                                tableHtml += `<tr><td><strong>Payment Type:</strong></td><td>${details.payment_type}</td></tr>`;
-                            }
-                            
-                            // Handle additional data if available
-                            if (details.data && typeof details.data === 'object') {
-                                for (const [key, value] of Object.entries(details.data)) {
-                                    if (value !== null && value !== undefined) {
-                                        // Format the key for display (convert_snake_case to Title Case)
-                                        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                        
-                                        // Format the value based on its type
-                                        let formattedValue = value;
-                                        if (typeof value === 'number' && key.includes('amount') || key.includes('total') || key.includes('price')) {
-                                            formattedValue = `PHP ${parseFloat(value).toFixed(2)}`;
-                                        } else if (typeof value === 'boolean') {
-                                            formattedValue = value ? 'Yes' : 'No';
-                                        } else if (value instanceof Date) {
-                                            formattedValue = value.toLocaleDateString();
-                                        }
-                                        
-                                        tableHtml += `<tr><td><strong>${formattedKey}:</strong></td><td>${formattedValue}</td></tr>`;
-                                    }
-                                }
-                            }
-                            
-                            detailsTable.innerHTML = tableHtml || '<tr><td>No additional details available</td></tr>';
-                        } catch (e) {
-                            detailsTable.innerHTML = '<tr><td>Error parsing transaction details</td></tr>';
-                            console.error('Error parsing details:', e);
-                        }
-                    } else {
-                        detailsContainer.style.display = 'none';
-                    }
+                    document.getElementById('modal-log-agent').textContent = logAgent;
                 });
             }
             
@@ -569,15 +419,14 @@ try {
             function highlightSearchTerms() {
                 const searchParams = new URLSearchParams(window.location.search);
                 const username = searchParams.get('username');
-                const transactionId = searchParams.get('transaction_id');
+                const action = searchParams.get('action');
                 
                 if (username) {
                     highlightText('td:nth-child(2)', username);
                 }
                 
-                if (transactionId) {
-                    highlightText('td:nth-child(4)', transactionId);
-                    highlightText('.transaction-badge', transactionId);
+                if (action) {
+                    highlightText('td:nth-child(4)', action);
                 }
             }
             
@@ -587,7 +436,7 @@ try {
                 const cells = document.querySelectorAll(selector);
                 cells.forEach(cell => {
                     const content = cell.innerHTML;
-                    const regex = new RegExp('(' + text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + ')', 'gi');
+                    const regex = new RegExp('(' + text + ')', 'gi');
                     cell.innerHTML = content.replace(regex, '<span class="highlight">$1</span>');
                 });
             }
@@ -596,4 +445,4 @@ try {
         });
     </script>
 </body>
-</html>
+</html> 
